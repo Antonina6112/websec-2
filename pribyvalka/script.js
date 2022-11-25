@@ -4,13 +4,50 @@ let myMap
 
 ymaps.ready(init);
 
+var modal = document.getElementById("favorite-list-modal");
+
+var span = document.getElementsByClassName("close")[0];
+
+span.onclick = function() {
+    modal.style.display = "none";
+}
+
+window.onclick = function(event) {
+    if (event.target === modal) {
+        modal.style.display = "none";
+    }
+}
+
+let placemarks = new Map();
 
 async function init() {
+    if(localStorage.getItem('favorite')!=null){
+        favoriteList = JSON.parse(localStorage.getItem('favorite'))
+    }
     renderFavoriteList()
     myMap = new ymaps.Map("YMapsID", {
         center: [53.19, 50.13],
-        zoom: 10
+        zoom: 10,
+        controls: ['smallMapDefaultSet']
     });
+
+    let favorites_button = new ymaps.control.Button({
+        data: {
+            content: "Избранное",
+        },
+        options: {
+            size:'large',
+            maxWidth: [28, 150, 178],
+            selectOnClick: false,
+        },
+    })
+
+    favorites_button.events.add('click', function (e){
+        modal.style.display = "block";
+    })
+
+    myMap.controls.add(favorites_button, {float: 'left'});
+
     await getAllStops().then(async stops => {
         let arrStop = stops.getElementsByTagName("stop")
         for (let i = 0; i < arrStop.length; i++) {
@@ -48,7 +85,13 @@ async function init() {
                     }
                     placemark.properties.set('balloonContentFooter', newContent);
                 })
+                if(checkKSInFavorite(KS_ID)){
+                    placemark.properties.set('balloonContentHeader', "<img id='img_plm_"+KS_ID+"' src='https://img.icons8.com/fluency/25/null/star.png' onclick='addToFavorite("+JSON.stringify(transferObj)+")' alt=\"photo\"'/>"+
+                        title_station);
+                }
             });
+
+            placemarks.set(KS_ID, placemark)
             myMap.geoObjects.add(placemark);
         }
     })
@@ -67,13 +110,14 @@ function addToFavorite(transferObj){
     if(checkKSInFavorite(transferObj.KS_ID)){
         img.src = "https://img.icons8.com/sf-ultralight/25/null/star.png"
         favoriteList = favoriteList.filter((item) => { return item.KS_ID !== transferObj.KS_ID; });
+        localStorage.setItem("favorite", JSON.stringify(favoriteList));
         renderFavoriteList()
     }else {
         img.src = "https://img.icons8.com/fluency/25/null/star.png"
         favoriteList.push(transferObj)
+        localStorage.setItem("favorite", JSON.stringify(favoriteList));
         renderFavoriteList()
     }
-    console.log(favoriteList)
 }
 
 function setPlasemarkColor(placemark, stop){
@@ -114,7 +158,7 @@ function getInfoByStop(KS_ID) {
 }
 
 function renderFavoriteList(){
-    let listElem = document.querySelector('.favorite-list');
+    let listElem = document.querySelector('#favorite-list');
     listElem.innerHTML = "<h2>Избранное: </h2>";
     if (!favoriteList.length) {
         const newItem = document.createElement('div');
@@ -133,8 +177,11 @@ function renderFavoriteList(){
         listElem.appendChild(newItem);
         newItem.addEventListener('click', () => {
             myMap.setCenter([stop.x, stop.y]);
+            modal.style.display = "none";
+            placemarks.get(stop.KS_ID).balloon.open();
         });
     }
+    modal.style.display = "none";
 }
 
 function SHA1(msg){function rotate_left(n,s){var t4=(n<<s)|(n>>>(32-s));return t4;};function lsb_hex(val){var str='';var i;var vh;var vl;for(i=0;i<=6;i+=2){vh=(val>>>(i*4+4))&0x0f;vl=(val>>>(i*4))&0x0f;str+=vh.toString(16)+vl.toString(16);}
