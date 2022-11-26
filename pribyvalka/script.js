@@ -4,7 +4,7 @@ let myMap
 
 ymaps.ready(init);
 
-var modal = document.getElementById("favorite-list-modal");
+var modal = document.getElementById("list-modal");
 
 var span = document.getElementsByClassName("close")[0];
 
@@ -43,6 +43,7 @@ async function init() {
     })
 
     favorites_button.events.add('click', function (e){
+        renderFavoriteList()
         modal.style.display = "block";
     })
 
@@ -79,9 +80,9 @@ async function init() {
                     let newContent = "";
                     let transport = stop.getElementsByTagName("transport")
                     for (let i = 0; i < transport.length; i++) {
-                        newContent += transport[i].getElementsByTagName("type")[0].textContent + " " +
+                        newContent += "<div onclick='renderInfoByNextStops("+ transport[i].getElementsByTagName("hullNo")[0].textContent + ")'>"+transport[i].getElementsByTagName("type")[0].textContent + " " +
                             transport[i].getElementsByTagName("number")[0].textContent +
-                            " будет через " + transport[i].getElementsByTagName("time")[0].textContent+"<br/>"
+                            " будет через " + transport[i].getElementsByTagName("time")[0].textContent+"<br/></div>"
                     }
                     placemark.properties.set('balloonContentFooter', newContent);
                 })
@@ -155,6 +156,37 @@ function getInfoByStop(KS_ID) {
                 return new DOMParser().parseFromString(str, "application/xml");
             }
         )
+}
+
+function renderInfoByNextStops(hullNo) {
+    fetch(`https://tosamara.ru/api/v2/json?method=getTransportPosition&HULLNO=${hullNo}&os=android&clientid=test&authkey=${SHA1(hullNo + "just_f0r_tests")}`)
+        .then(response => response.json())
+        .then(res => {
+            let listElem = document.querySelector('#favorite-list');
+            listElem.innerHTML = "<h2>Следующие остановки: </h2>";
+            if (!res) {
+                const newItem = document.createElement('div');
+                newItem.innerHTML = "<h3>Пусто</h3>";
+                listElem.appendChild(newItem);
+                return;
+            }
+            for (let stop of res.nextStops) {
+                const newItem = document.createElement('div');
+                newItem.innerHTML = `
+                    <div class="favorite-list-item">
+                        <h5>${placemarks.get(stop.KS_ID).properties.get('balloonContentBody')}</h5>
+                        <h6>${'Будет через ' + Math.round(+stop.time / 60)}</h6>
+                    </div>
+                `;
+                listElem.appendChild(newItem);
+                newItem.addEventListener('click', () => {
+                    modal.style.display = "none";
+                    placemarks.get(stop.KS_ID).balloon.open();
+                });
+            }
+
+            modal.style.display = "block";
+        });
 }
 
 function renderFavoriteList(){
