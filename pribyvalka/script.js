@@ -13,7 +13,7 @@ span.onclick = function() {
 }
 
 window.onclick = function(event) {
-    if (event.target === modal) {
+    if (event.target === modal && window.innerWidth >700) {
         modal.style.display = "none";
     }
 }
